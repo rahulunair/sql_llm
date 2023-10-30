@@ -1,0 +1,32 @@
+ {
+    "question": "What was the score of the game wehre the deportes savio were the home team?",
+    "context": "CREATE TABLE table_name_78 (score VARCHAR, home VARCHAR)"
+  }
+  {
+    "question": "In which championship did the winner have a score of \u22129 (66-69-73-71=279)?",
+    "context": "CREATE TABLE table_name_83 (championship VARCHAR, winning_score VARCHAR)"
+  }
+  {
+    "question": "During the championship where the winning score was \u22129 (66-69-73-71=279)?, who was the runner-up?",
+    "context": "CREATE TABLE table_name_32 (runner_s__up VARCHAR, winning_score VARCHAR)"
+  }
+  {
+    "question": "What was the winning score in the year 2002?",
+    "context": "CREATE TABLE table_name_28 (winning_score VARCHAR, year VARCHAR)"
+  }
+  {
+    "question": "What is the fewest goals of CD Alcoyano with more than 25 points?",
+    "context": "CREATE TABLE table_name_57 (goals_against INTEGER, club VARCHAR, points VARCHAR)"
+  }
+  {
+    "question": "What is the fewest number of wins that had fewer than 7 draws and more than 30 played?",
+    "context": "CREATE TABLE table_name_26 (wins INTEGER, draws VARCHAR, played VARCHAR)"
+  }
+  {
+    "question": "What is the fewest points that has more than 29 goals?",
+    "context": "CREATE TABLE table_name_42 (points INTEGER, goal_difference INTEGER)"
+  }
+  {
+    "question": "What date have highest 0-4-4 forney locomotive with number larger than 20 and works number larger than 23754?",
+    "context": "CREATE TABLE table_name_90 (date INTEGER, works_number VARCHAR, type VARCHAR, number VARCHAR)"
+  }
