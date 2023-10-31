@@ -1,6 +1,6 @@
 ## Text-to-SQL Generation Using Fine-tuned LLMs on Intel GPUs(XPUs) using QLoRA.
 
-<img src="https://github.com/rahulunair/sql_llm/assets/786476/8353bb33-bda7-47fe-bbc2-0214ce1e2395" width="450">
+<img src="https://github.com/rahulunair/sql_llm/assets/786476/8353bb33-bda7-47fe-bbc2-0214ce1e2395" width="350">
 
 This repository includes code for fine-tuning a Language Model for text-to-SQL tasks and for generating SQL queries with the fine-tuned model. Both the fine-tuning and generation processes leverage QLoRA, a Quantized Low-Rank Parameter Efficient finetuning method, enabled by [Intel's BigDL](https://github.com/intel-analytics/BigDL/tree/main/python/llm/example/GPU/QLoRA-FineTuning) library on Intel GPUs.
 
