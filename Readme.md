@@ -1,4 +1,4 @@
-## Text-to-SQL Generation Using Fine-tuned LLMs on Intel GPUs(XPUs) using QLoRA.
+## Text-to-SQL Generation Using Fine-tuned LLMs on Intel GPUs(XPUs) and QLoRA.
 
 <img src="https://github.com/rahulunair/sql_llm/assets/786476/8353bb33-bda7-47fe-bbc2-0214ce1e2395" width="350">
 
