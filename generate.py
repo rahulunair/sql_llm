@@ -18,7 +18,7 @@ import intel_extension_for_pytorch as ipex
 from datasets import load_dataset
 from datasets import Dataset
 from bigdl.llm.transformers import AutoModelForCausalLM
-from transformers import LlamaTokenizer
+from transformers import LlamaTokenizer, AutoTokenizer
 from bigdl.llm.transformers.qlora import PeftModel
 
 logging.basicConfig(level=logging.INFO)
@@ -65,7 +65,11 @@ class InferenceModel:
         Parameters:
             use_lora (bool, optional): Whether to use LoRA model. Defaults to False.
         """
-        self.tokenizer = LlamaTokenizer.from_pretrained(BASE_MODEL)
+        # Choose the appropriate tokenizer based on the model name
+        if 'llama' in self.base_model_id.lower():
+            self.tokenizer = LlamaTokenizer.from_pretrained(self.base_model_id)
+        else:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_id)
         self.model = AutoModelForCausalLM.from_pretrained(
             BASE_MODEL,
             low_cpu_mem_usage=True,
