@@ -31,17 +31,16 @@ from transformers import (
     TrainingArguments,
 )
 
-wandb.init(project="text-to-sql")
 
 # TODO(rahul): Move these to a config file later
-ENABLE_WANDB = False
-BASE_MODEL = "openlm-research/open_llama_3b"
+ENABLE_WANDB = True
+BASE_MODEL = "openlm-research/open_llama_7b_v2"
 DATA_PATH = "b-mc2/sql-create-context"
-MODEL_PATH = "./saved_model"
+MODEL_PATH = "./final_model"
 DEVICE = torch.device("xpu" if torch.xpu.is_available() else "cpu")
 LORA_CONFIG = LoraConfig(
-    r=8,
-    lora_alpha=16,
+    r=16,
+    lora_alpha=32,
     target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
     lora_dropout=0.05,
     bias="none",
@@ -49,29 +48,34 @@ LORA_CONFIG = LoraConfig(
 )
 
 
-def generate_prompt(text, context, output=None):
+if ENABLE_WANDB:
+    wandb.init(project="text-to-sql-sc")
+
+
+def generate_prompt_sql(input_question, context, output=""):
     """
     Generates a prompt for fine-tuning the LLM model for text-to-SQL tasks.
 
     Parameters:
-        text (str): The input text or question to be converted to SQL.
+        input_question (str): The input text or question to be converted to SQL.
         context (str): The schema or context in which the SQL query operates.
         output (str, optional): The expected SQL query as the output.
 
     Returns:
         str: A formatted string serving as the prompt for the fine-tuning task.
     """
-    return f"""You are an expert text-to-SQL converter.
-    Given a question and the Context generate the SQL query to answer the question based on the context.
+    return f"""You are a powerful text-to-SQL model. Your job is to answer questions about a database. You are given a question and context regarding one or more tables. 
 
-    ## Question:
-    {text}
+You must output the SQL query that answers the question.
 
-    ## Context:
-    {context}
+### Input:
+{input_question}
 
-    ## SQL Query:
-    {output}"""
+### Context:
+{context}
+
+### Response:
+{output}"""
 
 
 class FineTuner:
@@ -90,13 +94,21 @@ class FineTuner:
         self.model_path = model_path
         self.device = device
 
+    def find_sublist(self, lst, sublist):
+        n = len(lst)
+        m = len(sublist)
+        for i in range(n - m + 1):
+            if lst[i : i + m] == sublist:
+                return i
+        return -1
+
     def setup_models(self):
         """Downloads the pre-trained model and tokenizer based on the given base model ID."""
         try:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.base_model_id,
                 load_in_low_bit="nf4",
-                optimize_model=True,
+                optimize_model=False,
                 torch_dtype=torch.float16,
                 modules_to_not_convert=["lm_head"],
             )
@@ -107,7 +119,9 @@ class FineTuner:
         except Exception as e:
             logging.error(f"Error in downloading models: {e}")
 
-    def tokenize_batch(self, data_points, add_eos_token=True, cutoff_len=512) -> dict:
+    def tokenize_batch(
+        self, data_points, add_eos_token=True, train_on_inputs=False, cutoff_len=512
+    ) -> dict:
         """
         Tokenizes a batch of SQL related data points consisting of questions, context, and answers.
 
@@ -120,28 +134,44 @@ class FineTuner:
             dict: A dictionary containing tokenized 'input_ids', 'attention_mask', and 'labels'.
         """
         try:
-            questions = data_points["question"]
-            contexts = data_points["context"]
-            answers = data_points["answer"]
-            results = {"input_ids": [], "attention_mask": [], "labels": []}
-
-            for question, context, answer in zip(questions, contexts, answers):
-                combined_text = generate_prompt(question, context, answer)
-                tokenized = self.tokenizer(
-                    combined_text,
+            question = data_points["question"]
+            context = data_points["context"]
+            answer = data_points["answer"]
+            if train_on_inputs:
+                user_prompt = generate_prompt_sql(question, context)
+                tokenized_user_prompt = self.tokenizer(
+                    user_prompt,
                     truncation=True,
                     max_length=cutoff_len,
                     padding=False,
                     return_tensors=None,
                 )
-                if add_eos_token and len(tokenized["input_ids"]) < cutoff_len:
-                    tokenized["input_ids"].append(self.tokenizer.eos_token_id)
-                    tokenized["attention_mask"].append(1)
-                tokenized["labels"] = tokenized["input_ids"].copy()
-                results["input_ids"].append(tokenized["input_ids"])
-                results["attention_mask"].append(tokenized["attention_mask"])
-                results["labels"].append(tokenized["labels"])
-            return results
+                user_prompt_len = len(tokenized_user_prompt["input_ids"])
+                if add_eos_token:
+                    user_prompt_len -= 1
+
+            combined_text = generate_prompt_sql(question, context, answer)
+            tokenized = self.tokenizer(
+                combined_text,
+                truncation=True,
+                max_length=cutoff_len,
+                padding=False,
+                return_tensors=None,
+            )
+            if (
+                tokenized["input_ids"][-1] != self.tokenizer.eos_token_id
+                and add_eos_token
+                and len(tokenized["input_ids"]) < cutoff_len
+            ):
+                tokenized["input_ids"].append(self.tokenizer.eos_token_id)
+                tokenized["attention_mask"].append(1)
+            tokenized["labels"] = tokenized["input_ids"].copy()
+            if train_on_inputs:
+                tokenized["labels"] = [-100] * user_prompt_len + tokenized["labels"][
+                    user_prompt_len:
+                ]
+
+            return tokenized
         except Exception as e:
             logging.error(
                 f"Error in batch tokenization: {e}, Line: {e.__traceback__.tb_lineno}"
@@ -154,12 +184,8 @@ class FineTuner:
             train_val_split = data["train"].train_test_split(
                 test_size=val_set_size, shuffle=True, seed=42
             )
-            train_data = train_val_split["train"].map(
-                lambda x: self.tokenize_batch(x), batched=True
-            )
-            val_data = train_val_split["test"].map(
-                lambda x: self.tokenize_batch(x), batched=True
-            )
+            train_data = train_val_split["train"].shuffle().map(self.tokenize_batch)
+            val_data = train_val_split["test"].shuffle().map(self.tokenize_batch)
             return train_data, val_data
         except Exception as e:
             logging.error(
@@ -227,27 +253,28 @@ if __name__ == "__main__":
             base_model_id=BASE_MODEL, model_path=MODEL_PATH, device=DEVICE
         )
         training_args = TrainingArguments(
-            per_device_train_batch_size=8,
-            gradient_accumulation_steps=16,
-            warmup_steps=20,
+            per_device_train_batch_size=32,
+            gradient_accumulation_steps=4,
+            warmup_steps=100,
             save_steps=50,
             save_strategy="steps",
             eval_steps=50,
             evaluation_strategy="steps",
-            # max_steps=300,
+            max_steps=5000,
             learning_rate=3e-4,
-            num_train_epochs=2,
+            # num_train_epochs=2,
             max_grad_norm=0.3,
             bf16=True,
-            load_best_model_at_end=False,
+            lr_scheduler_type="cosine",
+            load_best_model_at_end=True,
             ddp_find_unused_parameters=False,
             group_by_length=True,
-            # save_total_steps=3,
+            save_total_limit=3,
             logging_steps=20,
             optim="adamw_hf",
-            output_dir="./lora_models",
+            output_dir="./lora_adapters",
             logging_dir="./logs",
-            report_to="wandb" if ENABLE_WANDB else None,
+            report_to="wandb" if ENABLE_WANDB else [],
         )
         finetuner.finetune(DATA_PATH, training_args)
     except Exception as e:
