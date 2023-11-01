@@ -27,6 +27,7 @@ from peft import LoraConfig
 from transformers import (
     DataCollatorForSeq2Seq,
     LlamaTokenizer,
+    AutoTokenizer,
     Trainer,
     TrainingArguments,
 )
@@ -112,7 +113,11 @@ class FineTuner:
                 torch_dtype=torch.float16,
                 modules_to_not_convert=["lm_head"],
             )
-            self.tokenizer = LlamaTokenizer.from_pretrained(self.base_model_id)
+            # Choose the appropriate tokenizer based on the model name
+            if 'llama' in self.base_model_id.lower():
+                self.tokenizer = LlamaTokenizer.from_pretrained(self.base_model_id)
+            else:
+                self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_id)
             self.tokenizer.pad_token_id = 0
             self.tokenizer.padding_side = "left"
 
