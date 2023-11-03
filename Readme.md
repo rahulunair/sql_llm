@@ -46,6 +46,26 @@ To finetune a model, run the `finetune.py` script
 ```bash
 python finetune.py
 ```
+
+```bash
+============================================================
+Training Parameters:
+Foundation model:         mistralai/Mistral-7B-Instruct-v0.1
+Model save path:          ./final_model
+Device used:              xpu
+Intel GPU:                Intel(R) Data Center GPU Max 1100
+Batch size per device:    32
+Gradient accum. steps:    4
+Warmup steps:             100
+Save steps:               20
+Evaluation steps:         20
+Max steps:                500
+Learning rate:            0.0003
+Max gradient norm:        0.3
+Save total limit:         3
+Logging steps:            20
+============================================================
+```
 <img src="https://github.com/rahulunair/sql_llm/assets/786476/225935e6-b36a-4633-8bb6-b2ab8c32ef6a" width="600">
 
 #### Key Features:
