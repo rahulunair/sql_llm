@@ -35,7 +35,20 @@ from transformers import (
 
 # TODO(rahul): Move these to a config file later
 ENABLE_WANDB = True
-BASE_MODEL = "openlm-research/open_llama_7b_v2"
+BASE_MODELS = {
+    "1": "openlm-research/open_llama_7b_v2",
+    "2": "mistralai/Mistral-7B-Instruct-v0.1",
+    "3": "NousResearch/Nous-Hermes-Llama2-13b",
+    "4": "NousResearch/Llama-2-7b-chat-hf",
+    "5": "mistralai/Mistral-7B-v0.1",
+}
+
+print("Available base models:")
+for key, model in BASE_MODELS.items():
+    print(f"{key}: {model}")
+user_choice = input("Select a model number (or press Enter to use the default): ").strip()
+BASE_MODEL = BASE_MODELS.get(user_choice, "openlm-research/open_llama_7b_v2")
+
 DATA_PATH = "b-mc2/sql-create-context"
 MODEL_PATH = "./final_model"
 DEVICE = torch.device("xpu" if torch.xpu.is_available() else "cpu")
@@ -114,10 +127,11 @@ class FineTuner:
                 modules_to_not_convert=["lm_head"],
             )
             # Choose the appropriate tokenizer based on the model name
-            if 'llama' in self.base_model_id.lower():
+            if "llama" in self.base_model_id.lower():
                 self.tokenizer = LlamaTokenizer.from_pretrained(self.base_model_id)
             else:
                 self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_id)
+            print(f"Using tokenizer: {self.tokenizer.__class__.__name__}")
             self.tokenizer.pad_token_id = 0
             self.tokenizer.padding_side = "left"
 
@@ -252,35 +266,69 @@ class FineTuner:
 
 
 if __name__ == "__main__":
-    print(f"Finetuning on device: {ipex.xpu.get_device_name()}")
     try:
+        # Training parameters
+        per_device_batch_size = 32
+        gradient_accum_steps = 4
+        warmup_steps = 100
+        save_steps = 20
+        eval_steps = 20
+        max_steps = 500
+        learning_rate = 3e-4
+        max_grad_norm = 0.3
+        save_total_limit = 3
+        logging_steps = 20
+
+        print("\n" + "\033[1;34m" + "=" * 60 + "\033[0m")
+        print("\033[1;34mTraining Parameters:\033[0m") 
+        param_format = "\033[1;34m{:<25} {}\033[0m" 
+        print(param_format.format("Foundation model:", BASE_MODEL))
+        print(param_format.format("Model save path:", MODEL_PATH))
+        print(param_format.format("Device used:", DEVICE))
+        if DEVICE.type.startswith("xpu"):
+            print(param_format.format("Intel GPU:", torch.xpu.get_device_name()))
+        print(param_format.format("Batch size per device:", per_device_batch_size))
+        print(param_format.format("Gradient accum. steps:", gradient_accum_steps))
+        print(param_format.format("Warmup steps:", warmup_steps))
+        print(param_format.format("Save steps:", save_steps))
+        print(param_format.format("Evaluation steps:", eval_steps))
+        print(param_format.format("Max steps:", max_steps))
+        print(param_format.format("Learning rate:", learning_rate))
+        print(param_format.format("Max gradient norm:", max_grad_norm))
+        print(param_format.format("Save total limit:", save_total_limit))
+        print(param_format.format("Logging steps:", logging_steps))
+        print("\033[1;34m" + "=" * 60 + "\033[0m\n")
+
+        # Initialize the finetuner with the model and device information
         finetuner = FineTuner(
             base_model_id=BASE_MODEL, model_path=MODEL_PATH, device=DEVICE
         )
+
         training_args = TrainingArguments(
-            per_device_train_batch_size=32,
-            gradient_accumulation_steps=4,
-            warmup_steps=100,
-            save_steps=50,
+            per_device_train_batch_size=per_device_batch_size,
+            gradient_accumulation_steps=gradient_accum_steps,
+            warmup_steps=warmup_steps,
+            save_steps=save_steps,
             save_strategy="steps",
-            eval_steps=50,
+            eval_steps=eval_steps,
             evaluation_strategy="steps",
-            max_steps=5000,
-            learning_rate=3e-4,
-            # num_train_epochs=2,
-            max_grad_norm=0.3,
+            max_steps=max_steps,
+            learning_rate=learning_rate,
+            max_grad_norm=max_grad_norm,
             bf16=True,
             lr_scheduler_type="cosine",
             load_best_model_at_end=True,
             ddp_find_unused_parameters=False,
             group_by_length=True,
-            save_total_limit=3,
-            logging_steps=20,
+            save_total_limit=save_total_limit,
+            logging_steps=logging_steps,
             optim="adamw_hf",
             output_dir="./lora_adapters",
             logging_dir="./logs",
             report_to="wandb" if ENABLE_WANDB else [],
         )
+
+        # Start fine-tuning
         finetuner.finetune(DATA_PATH, training_args)
     except Exception as e:
         logging.error(f"Error occurred: {e}")
