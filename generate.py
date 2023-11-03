@@ -25,9 +25,23 @@ logging.basicConfig(level=logging.INFO)
 
 
 # TODO(rahul): Move these to a config file later
-BASE_MODEL = "openlm-research/open_llama_7b_v2"
+BASE_MODELS = {
+    "1": "openlm-research/open_llama_7b_v2",
+    "2": "mistralai/Mistral-7B-Instruct-v0.1",
+    "3": "NousResearch/Nous-Hermes-Llama2-13b",
+    "4": "NousResearch/Llama-2-7b-chat-hf",
+    "5": "mistralai/Mistral-7B-v0.1",
+}
+
+print("Available base models:")
+for key, model in BASE_MODELS.items():
+    print(f"{key}: {model}")
+user_choice = input(
+    "Select a model number (or press Enter to use the default): "
+).strip()
+BASE_MODEL = BASE_MODELS.get(user_choice, "openlm-research/open_llama_7b_v2")
 MODEL_PATH = "./model"
-LORA_CHECKPOINT = "./lora_adapters/checkpoint-100"  # update the latest checkpoint
+LORA_CHECKPOINT = "./lora_adapters/checkpoint-20"  # !!! update the latest checkpoint
 TEST_DATA = "./test_data/sample_test_data.json"
 DEVICE = torch.device("xpu" if torch.xpu.is_available() else "cpu")
 
@@ -66,13 +80,14 @@ class InferenceModel:
             use_lora (bool, optional): Whether to use LoRA model. Defaults to False.
         """
         try:
+            self.base_model_id = BASE_MODEL
             # Choose the appropriate tokenizer based on the model name
-            if 'llama' in self.base_model_id.lower():
+            if "llama" in self.base_model_id.lower():
                 self.tokenizer = LlamaTokenizer.from_pretrained(self.base_model_id)
             else:
                 self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_id)
             self.model = AutoModelForCausalLM.from_pretrained(
-                BASE_MODEL,
+                self.base_model_id,
                 low_cpu_mem_usage=True,
                 load_in_4bit=True,
                 optimize_model=False,
@@ -83,7 +98,7 @@ class InferenceModel:
         except Exception as e:
             logging.error(f"Exception occurred during model initialization: {e}")
             raise
-            
+
         self.model.to(DEVICE)
         self.max_length = 512
         self.tokenizer.pad_token_id = 0
@@ -132,16 +147,15 @@ def main():
                 print("Using base model...")
                 output = base_model.generate(prompt)
                 print(f"\n\tbot response: {output}\n")
-        
+
                 print("Using finetuned model...")
                 output = finetuned_model.generate(prompt)
                 print(f"\n\tbot response: {output}\n")
             except Exception as e:
                 logging.error(f"Exception occurred during sample processing: {e}")
-    except:
+    except Exception as e:
         logging.error(f"Error during main execution: {e}")
-    
-    
+
 
 if __name__ == "__main__":
     main()
