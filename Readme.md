@@ -4,6 +4,7 @@
 
 This repository includes code for fine-tuning a Language Model for text-to-SQL tasks and for generating SQL queries with the fine-tuned model. Both the fine-tuning and generation processes leverage QLoRA, a Quantized Low-Rank Parameter Efficient finetuning method, enabled by [Intel's BigDL](https://github.com/intel-analytics/BigDL/tree/main/python/llm/example/GPU/QLoRA-FineTuning) library on Intel GPUs.
 
+![lora_adapters_v2(1)](https://github.com/rahulunair/sql_llm/assets/786476/c30d7fb4-2051-428c-9c55-fc4130cb11bc)
 
 ### Prerequisites
 
