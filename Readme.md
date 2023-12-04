@@ -51,7 +51,7 @@ python finetune.py
 ```bash
 ============================================================
 Training Parameters:
-Foundation model:         mistralai/Mistral-7B-Instruct-v0.1
+Foundation model:         NousResearch/CodeLlama-7b-hf
 Model save path:          ./final_model
 Device used:              xpu
 Intel GPU:                Intel(R) Data Center GPU Max 1100
@@ -60,7 +60,7 @@ Gradient accum. steps:    4
 Warmup steps:             100
 Save steps:               20
 Evaluation steps:         20
-Max steps:                500
+Max steps:                300
 Learning rate:            0.0003
 Max gradient norm:        0.3
 Save total limit:         3
@@ -68,6 +68,12 @@ Logging steps:            20
 ============================================================
 ```
 <img src="https://github.com/rahulunair/sql_llm/assets/786476/225935e6-b36a-4633-8bb6-b2ab8c32ef6a" width="600">
+
+Here is how the loss chart looks at the end of 300 steps of finetuning:
+
+As you can see the loss has a big drop in the intial steps and training loss gradually tapers to around 0.6:
+
+<img width="600" alt="loss_chart" src="https://github.com/rahulunair/sql_llm/assets/786476/0c86bf02-93d6-47da-be34-b09d39e6ffea">
 
 #### Key Features:
 
@@ -97,6 +103,17 @@ To generate SQL queries using the fine-tuned model, run the generate.py script.
 - MODEL_PATH: Path to the fine-tuned model.
 - LORA_CHECKPOINT: Latest checkpoint for the fine-tuned model.
 - TEST_DATA: Path to the test data file.
+
+
+After 15 minutes of training, we can see that the finetuned model is better at crafting SQL queries that is closer to what the question is compared to the base model:
+
+Finetuned model generation:
+
+<img width="600" src="https://github.com/rahulunair/sql_llm/assets/786476/1edf44ea-557b-4156-be2b-bf2716e2b4a5">
+
+Base model generation:
+
+<img width="600" src="https://github.com/rahulunair/sql_llm/assets/786476/f873f868-73e9-4bcf-861f-94cdefe34fc1">
 
 ### Default Configurations
 
