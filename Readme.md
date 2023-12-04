@@ -104,8 +104,7 @@ To generate SQL queries using the fine-tuned model, run the generate.py script.
 - LORA_CHECKPOINT: Latest checkpoint for the fine-tuned model.
 - TEST_DATA: Path to the test data file.
 
-
-After 15 minutes of training, we can see that the finetuned model is better at crafting SQL queries that is closer to what the question is compared to the base model:
+Following a 15-minute training session, the finetuned model demonstrates enhanced proficiency in generating SQL queries that more accurately reflect the given questions, compared to the base model. With additional training steps, we can anticipate further improvements in the model's response accuracy:
 
 Finetuned model generation:
 
